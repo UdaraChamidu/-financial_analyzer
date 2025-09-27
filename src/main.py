@@ -16,40 +16,52 @@ logger = logging.getLogger("financial_analyzer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 @app.command()
-def run(ticker: str, output: Optional[Path] = None, config: Path = Path("config.yaml")):
-    """Full pipeline for a single ticker."""
-    cfg = load_config(config)
+def main(
+    ticker: str = typer.Option(..., "--ticker", "-t", help="Ticker symbol (e.g. NVDA or RELIANCE.NS)"),
+    output: Path = typer.Option(..., "--output", "-o", help="Output JSON path"),
+    config_path: Path = typer.Option(Path("config.yaml"), "--config", "-c", help="Path to config YAML"),
+    db_path: Path = typer.Option(Path("financial_data.db"), "--db", "-d", help="Path to SQLite DB"),
+):
+    """Orchestrate the full pipeline for a ticker and write JSON results to output."""
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
     try:
-        raw = fetch_stock_data(ticker, period=cfg["data_settings"]["historical_period"])
+        cfg = load_config(str(config_path))
+    except Exception:
+        logger.warning("Could not load config from %s — using defaults", config_path)
+        cfg = {}
+
+    SessionMaker = init_db(str(db_path))
+    
+    try:
+        raw = fetch_stock_data(ticker)
         df = process_data(raw, cfg)
-    except Exception as e:
-        logger.exception("Pipeline failed for %s: %s", ticker, e)
-        raise typer.Exit(code=1)
 
-    # detect signals
-    goldens = detect_golden_crossover(df)
-    deaths = detect_death_cross(df)
+        # detect signals (expect df with date as column or index)
+        df_for_signals = df.reset_index() if not "date" in df.columns else df
+        gc_dates = detect_golden_crossover(df_for_signals)
+        signals = [{"ticker": ticker, "date": d, "signal": "golden_cross"} for d in gc_dates]
 
-    # persist
-    engine = init_db(cfg["database"]["path"])
-    save_daily_metrics(engine, df)
-    save_signals(engine, ticker, goldens, signal_name="golden_cross")
-    save_signals(engine, ticker, deaths, signal_name="death_cross")
+        # persist
+        save_daily_metrics(SessionMaker, ticker, df_for_signals)
+        save_signals(SessionMaker, signals)
 
-    # Export JSON
-    out = {
-        "ticker": ticker,
-        "metrics_count": len(df),
-        "golden_crosses": goldens,
-        "death_crosses": deaths,
-        "latest": df.iloc[-1].to_dict() if len(df) else {}
-    }
-    if output:
+        # write output JSON (include provenance)
+        out = {
+            "ticker": ticker,
+            "source_used": raw.get("source_used"),
+            "metrics_count": len(df),
+            "signals": signals,
+            "config": cfg,
+        }
         with open(output, "w", encoding="utf-8") as fh:
             json.dump(out, fh, default=str, indent=2)
-        logger.info("Saved JSON output to %s", output)
-    else:
-        print(json.dumps(out, default=str, indent=2))
 
+        logger.info("Pipeline completed and output saved to %s", output)
+    except Exception:
+        logger.exception("Pipeline failed for %s", ticker)
+        raise typer.Exit(code=1)
+    
 if __name__ == "__main__":
     app()

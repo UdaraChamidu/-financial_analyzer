@@ -1,6 +1,6 @@
 from src.processor import process_data
 from src.config import load_config
-from tests.conftest import sample_price_df
+from conftest import sample_price_df
 import pandas as pd
 
 def test_sma_calculation(tmp_path):
