@@ -116,33 +116,43 @@ financial_analyzer/
 
 ## Database Schema
 
+The SQLite database uses SQLAlchemy ORM with proper schema design for financial data persistence.
+
 ### Tables
 
 #### `tickers`
-- `id`: Primary key
-- `ticker`: Unique ticker symbol (indexed)
+- `id`: Primary key (auto-increment)
+- `ticker`: Unique ticker symbol (indexed, not null)
 - `name`: Company name (optional)
 
 #### `daily_metrics`
-- `id`: Primary key
-- `ticker`: Ticker symbol (indexed)
-- `date`: Trading date
-- `close`: Closing price
-- `sma_50`: 50-day Simple Moving Average
-- `sma_200`: 200-day Simple Moving Average
-- `pct_from_52wk_high`: Percentage from 52-week high
-- `bvps`: Book Value per Share
-- `pb_ratio`: Price-to-Book Ratio
-- `ev`: Enterprise Value
-- **Unique constraint**: `(ticker, date)`
+- `id`: Primary key (auto-increment)
+- `ticker`: Ticker symbol (indexed, not null)
+- `date`: Trading date (not null)
+- `close`: Closing price (float)
+- `sma_50`: 50-day Simple Moving Average (float)
+- `sma_200`: 200-day Simple Moving Average (float)
+- `pct_from_52wk_high`: Percentage from 52-week high (float)
+- `bvps`: Book Value per Share (float, nullable)
+- `pb_ratio`: Price-to-Book Ratio (float, nullable)
+- `ev`: Enterprise Value (float, nullable)
+- **Unique constraint**: `(ticker, date)` - Prevents duplicate daily records
 
 #### `signal_events`
-- `id`: Primary key
-- `ticker`: Ticker symbol (indexed)
-- `date`: Signal date
-- `signal`: Signal type (e.g., "golden_cross")
-- `meta`: Additional metadata (JSON/text)
-- **Unique constraint**: `(ticker, date, signal)`
+- `id`: Primary key (auto-increment)
+- `ticker`: Ticker symbol (indexed, not null)
+- `date`: Signal date (not null)
+- `signal`: Signal type (not null, e.g., "golden_cross", "death_cross")
+- `meta`: Additional metadata (text, nullable, for JSON/text data)
+- **Unique constraint**: `(ticker, date, signal)` - Prevents duplicate signal events
+
+### Database Design Features
+
+- **Idempotent Operations**: Uses `session.merge()` for INSERT OR REPLACE behavior
+- **UNIQUE Constraints**: Prevents duplicate data on re-runs
+- **Proper Indexing**: Ticker columns are indexed for fast queries
+- **Nullable Fields**: Fundamental metrics are nullable for missing data scenarios
+- **Data Types**: Appropriate SQLite types (Float for prices, Date for dates, Text for strings)
 
 ## Design Decisions
 

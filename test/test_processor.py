@@ -1,6 +1,5 @@
 from src.processor import process_data
-from src.config import load_config
-import pandas as pd
+
 
 def test_sma_calculation(tmp_path, sample_price_df):
     # build raw_data similar to fetch_stock_data
@@ -8,13 +7,13 @@ def test_sma_calculation(tmp_path, sample_price_df):
         "ticker": "TEST",
         "prices": sample_price_df,
         "quarterly_fundamentals": [],
-        "info": {}
+        "info": {},
     }
     cfg = {
         "data_settings": {
             "historical_period": "5y",
             "min_trading_days_for_sma": 200,
-            "rolling_days_for_52week": 252
+            "rolling_days_for_52week": 252,
         }
     }
     out = process_data(raw, cfg)

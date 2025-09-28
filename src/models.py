@@ -1,10 +1,22 @@
 """Pydantic models for validation of API responses and processed data."""
-from datetime import date, datetime
+
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, validator, condecimal
+from pydantic import BaseModel, validator, condecimal
 
 Money = condecimal(max_digits=30, decimal_places=6)
+
+
+class StockDataResponse(BaseModel):
+    """Validate raw API responses from yfinance."""
+
+    ticker: str
+    prices: List[Dict[str, Any]]
+    quarterly_fundamentals: List[Dict[str, Any]]
+    info: Dict[str, Any]
+    source_used: str
+
 
 class PricePoint(BaseModel):
     date: datetime
@@ -20,6 +32,31 @@ class PricePoint(BaseModel):
             raise ValueError("high must be >= low")
         return v
 
+    @validator("close")
+    def close_ge_low(cls, v, values):
+        if "low" in values and v < values["low"]:
+            raise ValueError("close must be >= low")
+        return v
+
+    @validator("close")
+    def close_le_high(cls, v, values):
+        if "high" in values and v > values["high"]:
+            raise ValueError("close must be <= high")
+        return v
+
+    @validator("open")
+    def open_ge_low(cls, v, values):
+        if "low" in values and v < values["low"]:
+            raise ValueError("open must be >= low")
+        return v
+
+    @validator("open")
+    def open_le_high(cls, v, values):
+        if "high" in values and v > values["high"]:
+            raise ValueError("open must be <= high")
+        return v
+
+
 class QuarterlyFundamentals(BaseModel):
     end_date: datetime
     total_assets: Optional[Money] = None
@@ -30,6 +67,7 @@ class QuarterlyFundamentals(BaseModel):
     shares_outstanding: Optional[Decimal] = None
     # Raw dict to keep any extra keys
     raw: Dict[str, Any] = {}
+
 
 class ProcessedDailyMetrics(BaseModel):
     date: datetime
@@ -45,11 +83,13 @@ class ProcessedDailyMetrics(BaseModel):
     # allow extension
     extras: Dict[str, Any] = {}
 
+
 class SignalEvent(BaseModel):
     ticker: str
     date: str  # ISO date string
     signal: str
     meta: Optional[Dict[str, Any]] = None
+
 
 class AnalysisOutput(BaseModel):
     ticker: str

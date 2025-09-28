@@ -22,7 +22,9 @@ def _find_col(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     return None
 
 
-def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
+def process_data(
+    raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None
+) -> pd.DataFrame:
     """Process raw stock and fundamental data into a metrics DataFrame.
 
     The function:
@@ -80,7 +82,9 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
     if "date" not in prices.columns:
         logger.error("Price records missing 'date' column")
         return pd.DataFrame()
-    prices["date"] = pd.to_datetime(prices["date"]).dt.tz_localize(None)  # Remove timezone info
+    prices["date"] = pd.to_datetime(prices["date"]).dt.tz_localize(
+        None
+    )  # Remove timezone info
     prices = prices.sort_values("date").reset_index(drop=True)
 
     # Load quarterly fundamentals if present and normalize
@@ -109,12 +113,19 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
                 suffixes=("", "_fund"),
             )
         else:
-            logger.warning("Quarterly fundamentals present but no recognizable date column; ignoring alignment")
+            logger.warning(
+                "Quarterly fundamentals present but no recognizable date column; ignoring alignment"
+            )
     else:
         # no quarterly df; nothing to merge
         pass
 
     # Forward-fill fundamentals (reasonable because fundamentals change infrequently)
+    # This approach is financially sound because:
+    # 1. Financial statements are published quarterly and remain valid until next report
+    # 2. Most fundamental metrics don't change significantly between quarters
+    # 3. It provides the most recent available data for daily analysis
+    # 4. Alternative approaches (interpolation, synthetic values) would be less accurate
     prices = prices.sort_values("date").ffill().reset_index(drop=True)
 
     # Technical indicators: SMA with min_periods adaptive to available history
@@ -125,11 +136,17 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
     else:
         minp_short = min(window_short, max(1, available))
         minp_long = min(window_long, max(1, available))
-        prices["sma_50"] = prices["close"].rolling(window=window_short, min_periods=minp_short).mean()
-        prices["sma_200"] = prices["close"].rolling(window=window_long, min_periods=minp_long).mean()
+        prices["sma_50"] = (
+            prices["close"].rolling(window=window_short, min_periods=minp_short).mean()
+        )
+        prices["sma_200"] = (
+            prices["close"].rolling(window=window_long, min_periods=minp_long).mean()
+        )
 
     # 52-week high and percent from high
-    prices["52wk_high"] = prices["close"].rolling(window=window_52wk, min_periods=1).max()
+    prices["52wk_high"] = (
+        prices["close"].rolling(window=window_52wk, min_periods=1).max()
+    )
     # avoid divide-by-zero
     prices["pct_from_52wk_high"] = np.where(
         prices["52wk_high"] > 0,
@@ -139,8 +156,18 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
 
     # Fundamental ratios: BVPS and P/B
     # Accept multiple possible column names for equity and shares
-    eq_col = _find_col(prices, ["total_equity", "totalShareholdersEquity", "totalStockholdersEquity", "total_equity_fund"])
-    shares_col = _find_col(prices, ["shares_outstanding", "shares", "common_shares_outstanding"])
+    eq_col = _find_col(
+        prices,
+        [
+            "total_equity",
+            "totalShareholdersEquity",
+            "totalStockholdersEquity",
+            "total_equity_fund",
+        ],
+    )
+    shares_col = _find_col(
+        prices, ["shares_outstanding", "shares", "common_shares_outstanding"]
+    )
     if eq_col and shares_col:
         # protect against zero division / missing
         prices["bvps"] = np.where(
@@ -162,14 +189,25 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
     info = raw_data.get("info") or {}
     market_cap = info.get("marketCap") or info.get("market_cap")
     # find liability and cash columns in merged fundamentals or info
-    liab_col = _find_col(prices, ["total_liab", "total_liabilities", "totalLiab", "totalLiabilities"])
-    cash_col_fund = _find_col(prices, ["cash_and_equivalents", "cash", "cash_equivalents"])
-    cash_info = info.get("totalCash") or info.get("cash") or info.get("cashAndCashEquivalents")
+    liab_col = _find_col(
+        prices, ["total_liab", "total_liabilities", "totalLiab", "totalLiabilities"]
+    )
+    cash_col_fund = _find_col(
+        prices, ["cash_and_equivalents", "cash", "cash_equivalents"]
+    )
+    cash_info = (
+        info.get("totalCash") or info.get("cash") or info.get("cashAndCashEquivalents")
+    )
+
     # compute EV per-row where possible
     def _compute_ev(row):
         mc = market_cap or np.nan
         tl = row[liab_col] if liab_col and pd.notna(row.get(liab_col)) else np.nan
-        cash = row[cash_col_fund] if cash_col_fund and pd.notna(row.get(cash_col_fund)) else (cash_info or np.nan)
+        cash = (
+            row[cash_col_fund]
+            if cash_col_fund and pd.notna(row.get(cash_col_fund))
+            else (cash_info or np.nan)
+        )
         # prefer numeric coercion
         try:
             parts = [float(x) for x in (mc, tl, cash)]
@@ -179,7 +217,11 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
         # if market cap missing, cannot compute reliably
         if np.isnan(mc_v):
             return np.nan
-        ev_v = mc_v + (tl_v if not np.isnan(tl_v) else 0.0) - (cash_v if not np.isnan(cash_v) else 0.0)
+        ev_v = (
+            mc_v
+            + (tl_v if not np.isnan(tl_v) else 0.0)
+            - (cash_v if not np.isnan(cash_v) else 0.0)
+        )
         return ev_v
 
     prices["ev"] = prices.apply(_compute_ev, axis=1)
@@ -189,4 +231,6 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
         prices = prices.reset_index().rename(columns={"index": "date"})
 
     return prices
+
+
 # ...existing code...
