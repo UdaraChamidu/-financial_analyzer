@@ -28,8 +28,8 @@ This financial analysis pipeline demonstrates production-grade data engineering 
 
 ### Prerequisites
 
-- Python 3.9+
-- uv (recommended) or poetry
+- Python 3.11
+- uv 
 
 ### Installation
 
