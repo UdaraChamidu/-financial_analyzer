@@ -80,7 +80,7 @@ def process_data(raw_data: Dict[str, Any], cfg: Optional[Dict[str, Any]] = None)
     if "date" not in prices.columns:
         logger.error("Price records missing 'date' column")
         return pd.DataFrame()
-    prices["date"] = pd.to_datetime(prices["date"])
+    prices["date"] = pd.to_datetime(prices["date"]).dt.tz_localize(None)  # Remove timezone info
     prices = prices.sort_values("date").reset_index(drop=True)
 
     # Load quarterly fundamentals if present and normalize

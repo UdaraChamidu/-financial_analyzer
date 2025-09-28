@@ -44,17 +44,20 @@ def fetch_stock_data(ticker: str, period: str = "5y") -> Dict[str, Any]:
         raise
 
     # 2) Fundamentals: prefer quarterly balance sheets, fallback to annual
+    source_used = "quarterly_balance_sheet"
     try:
         qb = tk.quarterly_balance_sheet  # DataFrame
         if qb is None or qb.empty:
             logger.info("quarterly_balance_sheet missing; falling back to annual balance_sheet")
             ab = tk.balance_sheet
             qfund_df = ab.transpose() if ab is not None else pd.DataFrame()
+            source_used = "annual_balance_sheet"
         else:
             qfund_df = qb.transpose()
     except Exception as e:
         logger.exception("Error fetching balance sheet: %s", e)
         qfund_df = pd.DataFrame()
+        source_used = "none_available"
 
     # 3) Info
     try:
@@ -82,5 +85,6 @@ def fetch_stock_data(ticker: str, period: str = "5y") -> Dict[str, Any]:
         "ticker": ticker,
         "prices": prices,
         "quarterly_fundamentals": qfund_records,
-        "info": info
+        "info": info,
+        "source_used": source_used
     }

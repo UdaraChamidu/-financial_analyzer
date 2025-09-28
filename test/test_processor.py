@@ -1,13 +1,12 @@
 from src.processor import process_data
 from src.config import load_config
-from conftest import sample_price_df
 import pandas as pd
 
-def test_sma_calculation(tmp_path):
+def test_sma_calculation(tmp_path, sample_price_df):
     # build raw_data similar to fetch_stock_data
     raw = {
         "ticker": "TEST",
-        "prices": sample_price_df(),
+        "prices": sample_price_df,
         "quarterly_fundamentals": [],
         "info": {}
     }

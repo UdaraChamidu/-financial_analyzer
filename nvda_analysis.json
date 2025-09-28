@@ -1,0 +1,18 @@
+{
+  "ticker": "NVDA",
+  "source_used": "quarterly_balance_sheet",
+  "metrics_count": 1256,
+  "signals": [
+    {
+      "ticker": "NVDA",
+      "date": "2023-01-24",
+      "signal": "golden_cross"
+    },
+    {
+      "ticker": "NVDA",
+      "date": "2025-06-27",
+      "signal": "golden_cross"
+    }
+  ],
+  "config": {}
+}

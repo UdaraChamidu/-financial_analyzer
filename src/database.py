@@ -1,12 +1,11 @@
 """SQLAlchemy ORM + helper functions for idempotent SQLite persistence."""
-from typing import Optional
+from typing import Optional, Iterable
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 import logging
 from datetime import date
-from typing import Iterable
 
 from sqlalchemy import (
     Column,
@@ -58,8 +57,7 @@ def init_db(db_path: str = "financial_data.db"):
 
 
 def save_daily_metrics(session_maker, ticker: str, df):
-    Session = session_maker()
-    session = Session()
+    session = session_maker()
     try:
         for _, row in df.iterrows():
             obj = DailyMetric(
@@ -79,13 +77,19 @@ def save_daily_metrics(session_maker, ticker: str, df):
         session.close()
 
 def save_signals(session_maker, signals: Iterable[dict]):
-    Session = session_maker()
-    session = Session()
+    session = session_maker()
     try:
         for s in signals:
+            # Handle both string and datetime dates
+            signal_date = s["date"]
+            if isinstance(signal_date, str):
+                signal_date = pd.to_datetime(signal_date).date()
+            elif hasattr(signal_date, 'date'):
+                signal_date = signal_date.date()
+            
             obj = SignalEvent(
                 ticker=s["ticker"],
-                date=s["date"] if isinstance(s["date"], date) else s["date"].date(),
+                date=signal_date,
                 signal=s["signal"],
                 meta=s.get("meta"),
             )

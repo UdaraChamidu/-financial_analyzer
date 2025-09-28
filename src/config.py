@@ -8,7 +8,7 @@ def load_config(path: str | Path = "config.yaml") -> Dict[str, Any]:
 
     Args:
         path: Path to YAML config.
-
++
     Returns:
         Configuration dictionary.
     """

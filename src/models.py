@@ -44,3 +44,16 @@ class ProcessedDailyMetrics(BaseModel):
     enterprise_value: Optional[Money] = None
     # allow extension
     extras: Dict[str, Any] = {}
+
+class SignalEvent(BaseModel):
+    ticker: str
+    date: str  # ISO date string
+    signal: str
+    meta: Optional[Dict[str, Any]] = None
+
+class AnalysisOutput(BaseModel):
+    ticker: str
+    source_used: Optional[str] = None
+    metrics_count: int
+    signals: List[SignalEvent]
+    config: Dict[str, Any]

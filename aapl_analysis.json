@@ -1,0 +1,28 @@
+{
+  "ticker": "AAPL",
+  "source_used": "quarterly_balance_sheet",
+  "metrics_count": 1256,
+  "signals": [
+    {
+      "ticker": "AAPL",
+      "date": "2022-09-28",
+      "signal": "golden_cross"
+    },
+    {
+      "ticker": "AAPL",
+      "date": "2023-03-23",
+      "signal": "golden_cross"
+    },
+    {
+      "ticker": "AAPL",
+      "date": "2024-06-13",
+      "signal": "golden_cross"
+    },
+    {
+      "ticker": "AAPL",
+      "date": "2025-09-15",
+      "signal": "golden_cross"
+    }
+  ],
+  "config": {}
+}
